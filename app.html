@@ -1,0 +1,154 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Interactive SVG Viewer</title>
+  <style>
+    body,
+    html {
+      margin: 0;
+      padding: 0;
+      width: 100%;
+      height: 100%;
+      display: flex;
+      overflow: hidden;
+    }
+
+    #input-panel {
+      width: 50%;
+      height: 100%;
+      padding: 10px;
+      box-sizing: border-box;
+      border-right: 2px solid #ccc;
+    }
+
+    #svg-panel {
+      width: 50%;
+      height: 100%;
+      overflow: hidden;
+      cursor: grab;
+      background-color: #f0f0f0;
+    }
+
+    #svg-panel:active {
+      cursor: grabbing;
+    }
+
+    textarea {
+      width: 100%;
+      height: 90%;
+      resize: none;
+      font-family: monospace;
+      font-size: 14px;
+    }
+
+    button {
+      width: 100%;
+      height: 10%;
+      font-size: 16px;
+    }
+
+    #svg-container {
+      width: 100%;
+      height: 100%;
+    }
+
+    svg {
+      width: 100%;
+      height: 100%;
+    }
+  </style>
+</head>
+
+<body>
+  <div id="input-panel">
+    <textarea id="svg-input" placeholder="Paste your SVG code here..."></textarea>
+    <button id="render-button">Render SVG</button>
+  </div>
+  <div id="svg-panel">
+    <div id="svg-container"></div>
+  </div>
+
+  <script>
+    const svgInput = document.getElementById('svg-input');
+    const renderButton = document.getElementById('render-button');
+    const svgContainer = document.getElementById('svg-container');
+    let svgElement;
+    let isDragging = false;
+    let dragStart = { x: 0, y: 0 };
+    let viewBox = { x: 0, y: 0, width: 100, height: 100 };
+
+    renderButton.addEventListener('click', function () {
+      const svgCode = svgInput.value;
+      svgContainer.innerHTML = svgCode;
+      svgElement = svgContainer.querySelector('svg');
+
+      if (svgElement) {
+        viewBox = svgElement.viewBox.baseVal;
+        if (!viewBox || viewBox.width === 0 || viewBox.height === 0) {
+          viewBox = { x: 0, y: 0, width: svgElement.getBoundingClientRect().width, height: svgElement.getBoundingClientRect().height };
+        }
+      }
+
+      setupSvgInteraction();
+    });
+
+    function setupSvgInteraction() {
+      if (!svgElement) return;
+
+      svgElement.setAttribute('viewBox', `${viewBox.x} ${viewBox.y} ${viewBox.width} ${viewBox.height}`);
+
+      svgContainer.addEventListener('mousedown', function (e) {
+        isDragging = true;
+        dragStart.x = e.clientX;
+        dragStart.y = e.clientY;
+      });
+
+      svgContainer.addEventListener('mousemove', function (e) {
+        if (isDragging) {
+          const dx = (dragStart.x - e.clientX) * (viewBox.width / svgContainer.clientWidth);
+          const dy = (dragStart.y - e.clientY) * (viewBox.height / svgContainer.clientHeight);
+          viewBox.x += dx;
+          viewBox.y += dy;
+          dragStart.x = e.clientX;
+          dragStart.y = e.clientY;
+          updateViewBox();
+        }
+      });
+
+      svgContainer.addEventListener('mouseup', function () {
+        isDragging = false;
+      });
+
+      svgContainer.addEventListener('mouseleave', function () {
+        isDragging = false;
+      });
+
+      svgContainer.addEventListener('wheel', function (e) {
+        e.preventDefault();
+        const scaleFactor = 1.1;
+        const mouseX = e.clientX - svgContainer.getBoundingClientRect().left;
+        const mouseY = e.clientY - svgContainer.getBoundingClientRect().top;
+        const zoomDirection = e.deltaY > 0 ? 1 : -1;
+
+        const zoomFactor = zoomDirection > 0 ? scaleFactor : 1 / scaleFactor;
+        viewBox.width *= zoomFactor;
+        viewBox.height *= zoomFactor;
+
+        // Adjust viewBox position to zoom towards the mouse pointer
+        viewBox.x += (mouseX / svgContainer.clientWidth) * (viewBox.width * (1 - 1 / zoomFactor));
+        viewBox.y += (mouseY / svgContainer.clientHeight) * (viewBox.height * (1 - 1 / zoomFactor));
+
+        updateViewBox();
+      });
+    }
+
+    function updateViewBox() {
+      svgElement.setAttribute('viewBox', `${viewBox.x} ${viewBox.y} ${viewBox.width} ${viewBox.height}`);
+    }
+  </script>
+</body>
+
+</html>
